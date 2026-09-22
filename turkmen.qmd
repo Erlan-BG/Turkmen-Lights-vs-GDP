@@ -19,9 +19,16 @@ library(rnaturalearthdata)
 library(dplyr)
 library(ggplot2)
 library(grid)
+library(tidyr)
+library(wbstats)
+library(ggthemes)
 
 viirs_folder <- "VIIRS Data"
 years <- 2015:2020
+
+tif_path <- function(yr) {
+  file.path(viirs_folder, yr, sprintf("TKM_VNL_v2_%d_average_masked.tif", yr))
+}
 
 tkm_sf <- ne_countries(country = "Turkmenistan", scale = "medium", returnclass = "sf")
 tkm <- vect(tkm_sf)
@@ -40,7 +47,7 @@ cities <- data.frame(
 #| label: maps
 #| output: asis
 read_year <- function(yr) {
-  file.path(viirs_folder, yr, sprintf("TKM_VNL_v2_%d_average_masked.tif", yr)) |>
+  tif_path(yr) |>
     rast() |>
     crop(tkm) |>
     mask(tkm) |>
@@ -50,6 +57,61 @@ read_year <- function(yr) {
 }
 
 lights <- lapply(years, read_year)
+
+#sumlights (full masked raster, not the >1 filtered pixels)
+lights_data <- data.frame(
+  year = years,
+  lights = vapply(years, function(yr) {
+    r <- rast(tif_path(yr)) |> crop(tkm) |> mask(tkm)
+    global(r, fun = "sum", na.rm = TRUE)[[1]]
+  }, numeric(1))
+)
+
+#pullwbgdp
+gdp_data <- wb_data(
+  indicator = c(real_gdp = "NY.GDP.MKTP.KD"), #real GDP adj for inflation
+  country = "TKM",
+  start_date = min(years),
+  end_date = max(years)
+) |>
+  transmute(year = as.integer(date), real_gdp) |>
+  arrange(year)
+
+turkmen_data <- left_join(gdp_data, lights_data, by = "year") |>
+  mutate(
+    gdp_index = real_gdp / real_gdp[year == 2015] * 100,
+    lights_index = lights / lights[year == 2015] * 100
+  )
+
+plot_data <- turkmen_data |>
+  select(year, `Official GDP` = gdp_index, `Nighttime lights` = lights_index) |>
+  pivot_longer(-year, names_to = "series", values_to = "index")
+
+#name each line at its right end instead of a legend
+line_labels <- filter(plot_data, year == max(year))
+
+turkplot <- ggplot(plot_data, aes(year, index, linetype = series)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  geom_text(data = line_labels, aes(label = series),
+            hjust = 0, nudge_x = 0.12, family = "serif", size = 5) +
+  scale_x_continuous(breaks = years, expand = expansion(mult = c(0.02, 0.18))) +
+  labs(
+    title = "Official GDP vs Nighttime Lights",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_tufte(base_size = 14, base_family = "serif", ticks = TRUE) +
+  theme(legend.position = "none")
+
+#same chart per year, with the slider's year marked in orange
+#11in wide to match the map image, so text renders at the same scale
+draw_chart <- function(yr, file) {
+  p <- turkplot +
+    geom_vline(xintercept = yr, colour = "#e8590c", linewidth = 0.5) +
+    geom_point(data = filter(plot_data, year == yr), colour = "#e8590c", size = 4)
+  ggsave(file, p, width = 11, height = 4.5, dpi = 170, bg = "white")
+}
 
 # Colour tops out at city brightness, so flares don't wash out the towns
 base_map <- function(lights_df) {
@@ -93,10 +155,17 @@ draw_year <- function(lights_df, file) {
   dev.off()
 }
 
-img_tags <- vapply(seq_along(years), function(i) {
+map_tags <- vapply(seq_along(years), function(i) {
   f <- tempfile(fileext = ".png")
   draw_year(lights[[i]], f)
   sprintf('<img class="ntl-map" data-year="%d" alt="Nighttime lights, %d" src="%s"%s>',
+          years[i], years[i], knitr::image_uri(f), if (i == 1) "" else " hidden")
+}, character(1))
+
+chart_tags <- vapply(seq_along(years), function(i) {
+  f <- tempfile(fileext = ".png")
+  draw_chart(years[i], f)
+  sprintf('<img class="ntl-chart" data-year="%d" alt="GDP vs lights index, %d marked" src="%s"%s>',
           years[i], years[i], knitr::image_uri(f), if (i == 1) "" else " hidden")
 }, character(1))
 
@@ -106,10 +175,11 @@ cat(
   "```{=html}",
   '<div class="ntl">',
   sprintf('<div class="ntl-year">%d</div>', min(years)),
-  img_tags,
+  '<div class="ntl-panel">', map_tags, "</div>",
   sprintf('<input type="range" class="ntl-range" min="%d" max="%d" step="1" value="%d" aria-label="Year">',
           min(years), max(years), min(years)),
   sprintf('<div class="ntl-ticks">%s</div>', ticks),
+  '<div class="ntl-panel ntl-chart-panel">', chart_tags, "</div>",
   "</div>",
   "```",
   sep = "\n"
@@ -120,8 +190,9 @@ cat(
 <style>
 .ntl { max-width: 1100px; margin: 0 auto; }
 .ntl-year { font-family: serif; font-size: 1.6rem; text-align: center; color: #444; }
-.ntl-map { width: 100%; height: auto; display: block; }
-.ntl-map[hidden] { display: none; }
+.ntl-map, .ntl-chart { width: 100%; height: auto; display: block; }
+.ntl-chart-panel { margin-top: 2rem; }
+.ntl-panel img[hidden] { display: none; }
 .ntl-range { width: 100%; accent-color: #e8590c; margin-top: 0.5rem; }
 .ntl-ticks { display: flex; justify-content: space-between; font-family: serif;
              font-size: 0.85rem; color: #666; }
@@ -130,7 +201,7 @@ cat(
 document.querySelectorAll('.ntl').forEach(box => {
   const range = box.querySelector('.ntl-range');
   const label = box.querySelector('.ntl-year');
-  const maps = box.querySelectorAll('.ntl-map');
+  const maps = box.querySelectorAll('img[data-year]');
   const show = () => {
     maps.forEach(m => { m.hidden = m.dataset.year !== range.value; });
     label.textContent = range.value;
