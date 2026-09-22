@@ -1,0 +1,134 @@
+library(terra)
+library(stringr)
+library(R.utils)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(wbstats)
+library(ggthemes)
+
+
+viirs_folder <- "VIIRS Data"
+
+tkm <- ne_countries(
+  country = "Turkmenistan",
+  scale = "medium",
+  returnclass = "sf"
+) 
+
+tkm <- vect(tkm)
+
+viirs_files <- list.files(
+  viirs_folder,
+  pattern = "\\.tif$",
+  recursive = TRUE,
+  full.names = TRUE
+)
+
+#pullviirsrecursive
+
+process_viirs <- function(file) {
+  #crop
+  year <- str_extract(file, "20\\d{2}") |>
+    as.integer()
+  r <- rast(file)
+  tkm_r <- project(tkm, crs(r))
+  r_tkm <- crop(r, tkm_r)
+  r_tkm <- mask(r_tkm, tkm_r)
+  #sumlights
+  light_sum <- global(
+    r_tkm,
+    fun = "sum",
+    na.rm = TRUE
+  )[[1]]
+  
+  data.frame(
+    year = year,
+    lights = light_sum
+  )
+}
+
+lights_data <- lapply(
+  viirs_files,
+  process_viirs
+  ) |>
+  bind_rows() |>
+  arrange(year)
+
+print(lights_data) #remove later
+
+#pullwbgdp
+
+gdp_data <- wb_data(
+  indicator = c(real_gdp ="NY.GDP.MKTP.KD"), #real GDP adj for inflation
+  country = "TKM",
+  start_date = 2015,
+  end_date = 2020,
+) |>
+  transmute(
+    year = as.integer(date),
+    real_gdp
+  ) |>
+arrange(year)
+  
+print(gdp_data) #removelater
+
+#combine
+
+turkmen_data <- left_join(
+  gdp_data,
+  lights_data,
+  by = "year"
+)
+
+#
+
+print(turkmen_data) #removelater
+
+turkmen_data <- turkmen_data |>
+  mutate(
+    gdp_index =
+      real_gdp / real_gdp[year == 2015] *100,
+    
+    lights_index = 
+      lights / lights[year == 2015] * 100
+    )
+  
+# plotthedata
+
+plot_data <- turkmen_data |>
+  select(
+    year,
+    Official_GDP = gdp_index,
+    Nighttime_Lights = lights_index
+  ) |>
+  pivot_longer(
+    cols = -year,
+    names_to = "series",
+    values_to = "index"
+  )
+
+turkplot <- ggplot(
+  plot_data,
+  aes(
+    x = year,
+    y = index,
+    linetype = series
+  )
+) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  labs(
+    title = "Turkmenistan: Official GDP vs Nighttime Lights",
+    x = NULL,
+    y = "Index",
+    linetype = NULL,
+    caption = "Sources: World Bank WDI & VIIRS"
+  ) +
+  theme_tufte(base_size = 11, base_family = "serif", ticks=TRUE)
+
+print(turkplot)
+
+
