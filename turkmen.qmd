@@ -1,0 +1,142 @@
+---
+title: "Turkmenistan: Official GDP vs Nighttime Lights"
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+library(terra)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata)
+library(dplyr)
+library(ggplot2)
+library(grid)
+
+viirs_folder <- "VIIRS Data"
+years <- 2015:2020
+
+tkm_sf <- ne_countries(country = "Turkmenistan", scale = "medium", returnclass = "sf")
+tkm <- vect(tkm_sf)
+
+# Close-up windows (lon/lat); also drawn as boxes on the country map
+cities <- data.frame(
+  name = c("Ashgabat", "Mary", "Türkmenbaşy", "Daşoguz"),
+  xmin = c(57.95, 61.40, 52.70, 59.50),
+  xmax = c(58.85, 62.30, 53.60, 60.40),
+  ymin = c(37.70, 37.35, 39.80, 41.60),
+  ymax = c(38.20, 37.85, 40.30, 42.10)
+)
+```
+
+```{r}
+#| label: maps
+#| output: asis
+read_year <- function(yr) {
+  file.path(viirs_folder, yr, sprintf("TKM_VNL_v2_%d_average_masked.tif", yr)) |>
+    rast() |>
+    crop(tkm) |>
+    mask(tkm) |>
+    as.data.frame(xy = TRUE, na.rm = TRUE) |>
+    setNames(c("x", "y", "radiance")) |>
+    filter(radiance > 1)
+}
+
+lights <- lapply(years, read_year)
+
+# Colour tops out at city brightness, so flares don't wash out the towns
+base_map <- function(lights_df) {
+  ggplot() +
+    geom_sf(data = tkm_sf, fill = "grey93", colour = "grey70", linewidth = 0.3) +
+    geom_tile(data = lights_df, aes(x, y, fill = radiance)) +
+    scale_fill_gradient(low = "#fcd9b8", high = "#e8590c",
+                        trans = "log10", limits = c(1, 60),
+                        oob = scales::squish, guide = "none")
+}
+
+country_map <- function(lights_df) {
+  base_map(lights_df) +
+    geom_rect(data = cities, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+              fill = NA, colour = "grey30", linewidth = 0.3) +
+    geom_text(data = cities, aes(xmax, ymax, label = name), hjust = 0, vjust = 0,
+              nudge_x = 0.05, family = "serif", size = 4, colour = "grey20") +
+    coord_sf(expand = FALSE) +
+    theme_void(base_family = "serif") +
+    theme(plot.margin = margin(5, 5, 5, 5))
+}
+
+city_map <- function(lights_df, city) {
+  b <- filter(cities, name == city)
+  base_map(filter(lights_df, between(x, b$xmin, b$xmax), between(y, b$ymin, b$ymax))) +
+    coord_sf(xlim = c(b$xmin, b$xmax), ylim = c(b$ymin, b$ymax), expand = FALSE) +
+    labs(title = city) +
+    theme_void(base_family = "serif", base_size = 12) +
+    theme(plot.title = element_text(colour = "grey20", hjust = 0.5),
+          panel.border = element_rect(fill = NA, colour = "grey30", linewidth = 0.4),
+          plot.margin = margin(5, 5, 5, 5))
+}
+
+draw_year <- function(lights_df, file) {
+  png(file, width = 11, height = 11, units = "in", res = 170, bg = "white")
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(2, 4, heights = unit(c(7.9, 3.1), "null"))))
+  at <- function(p, row, col) print(p, vp = viewport(layout.pos.row = row, layout.pos.col = col))
+  at(country_map(lights_df), 1, 1:4)
+  for (i in seq_len(nrow(cities))) at(city_map(lights_df, cities$name[i]), 2, i)
+  dev.off()
+}
+
+img_tags <- vapply(seq_along(years), function(i) {
+  f <- tempfile(fileext = ".png")
+  draw_year(lights[[i]], f)
+  sprintf('<img class="ntl-map" data-year="%d" alt="Nighttime lights, %d" src="%s"%s>',
+          years[i], years[i], knitr::image_uri(f), if (i == 1) "" else " hidden")
+}, character(1))
+
+ticks <- paste0("<span>", years, "</span>", collapse = "")
+
+cat(
+  "```{=html}",
+  '<div class="ntl">',
+  sprintf('<div class="ntl-year">%d</div>', min(years)),
+  img_tags,
+  sprintf('<input type="range" class="ntl-range" min="%d" max="%d" step="1" value="%d" aria-label="Year">',
+          min(years), max(years), min(years)),
+  sprintf('<div class="ntl-ticks">%s</div>', ticks),
+  "</div>",
+  "```",
+  sep = "\n"
+)
+```
+
+```{=html}
+<style>
+.ntl { max-width: 1100px; margin: 0 auto; }
+.ntl-year { font-family: serif; font-size: 1.6rem; text-align: center; color: #444; }
+.ntl-map { width: 100%; height: auto; display: block; }
+.ntl-map[hidden] { display: none; }
+.ntl-range { width: 100%; accent-color: #e8590c; margin-top: 0.5rem; }
+.ntl-ticks { display: flex; justify-content: space-between; font-family: serif;
+             font-size: 0.85rem; color: #666; }
+</style>
+<script>
+document.querySelectorAll('.ntl').forEach(box => {
+  const range = box.querySelector('.ntl-range');
+  const label = box.querySelector('.ntl-year');
+  const maps = box.querySelectorAll('.ntl-map');
+  const show = () => {
+    maps.forEach(m => { m.hidden = m.dataset.year !== range.value; });
+    label.textContent = range.value;
+  };
+  range.addEventListener('input', show);
+  show();
+});
+</script>
+```
