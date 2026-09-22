@@ -1,0 +1,19 @@
+# R
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+.Renviron
+*_cache/
+rsconnect/
+
+# macOS
+.DS_Store
+
+# Quarto
+/.quarto/
+*_files/
+
+# Not part of the R project
+.venv/
+.claude/
