@@ -64,8 +64,8 @@ print(lights_data) #remove later
 gdp_data <- wb_data(
   indicator = c(real_gdp ="NY.GDP.MKTP.KD"), #real GDP adj for inflation
   country = "TKM",
-  start_date = 2015,
-  end_date = 2020,
+  start_date = 2014,
+  end_date = 2021,
 ) |>
   transmute(
     year = as.integer(date),
@@ -87,22 +87,22 @@ turkmen_data <- left_join(
 
 print(turkmen_data) #removelater
 
+elasticity <- 0.15
+
 turkmen_data <- turkmen_data |>
   mutate(
-    gdp_index =
-      real_gdp / real_gdp[year == 2015] *100,
-    
-    lights_index = 
-      lights / lights[year == 2015] * 100
-    )
+    gdp_index = real_gdp / real_gdp[year == 2014] * 100,
+    lights_index = lights / lights[year == 2014] * 100,
+    lights_implied_gdp_index = 100 * (lights / lights[year == 2014])^elasticity
+  )
   
 # plotthedata
 
 plot_data <- turkmen_data |>
   select(
     year,
-    Official_GDP = gdp_index,
-    Nighttime_Lights = lights_index
+    'Official GDP' = gdp_index,
+    'Lights-Implied GDP' = lights_implied_gdp_index
   ) |>
   pivot_longer(
     cols = -year,
@@ -121,11 +121,11 @@ turkplot <- ggplot(
   geom_line(linewidth = 1.2) +
   geom_point(size = 3) +
   labs(
-    title = "Turkmenistan: Official GDP vs Nighttime Lights",
+    title = "Turkmenistan: Official GDP vs Nighttime Implied GDP",
     x = NULL,
-    y = "Index",
+    y = "GDP",
     linetype = NULL,
-    caption = "Sources: World Bank WDI & VIIRS"
+    caption = "Sources: World Bank WDI; VIIRS VNL v2; elasticity 0.15 from Chiovelli et al. (2025)"
   ) +
   theme_tufte(base_size = 11, base_family = "serif", ticks=TRUE)
 

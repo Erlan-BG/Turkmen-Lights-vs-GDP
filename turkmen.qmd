@@ -24,7 +24,7 @@ library(wbstats)
 library(ggthemes)
 
 viirs_folder <- "VIIRS Data"
-years <- 2015:2020
+years <- 2014:2021
 
 tif_path <- function(yr) {
   file.path(viirs_folder, yr, sprintf("TKM_VNL_v2_%d_average_masked.tif", yr))
@@ -77,14 +77,23 @@ gdp_data <- wb_data(
   transmute(year = as.integer(date), real_gdp) |>
   arrange(year)
 
+# GDP-lights elasticity: Chiovelli, Michalopoulos, Papaioannou & Regan (2025),
+# "Illuminating the Global South", GWU CER WP 2025-009 — original VIIRS,
+# 2014–2019 long difference, global sample: 0.15 (SE 0.057).
+# Their regression also includes region constants (not reported) and population
+# growth; this uses only the lights term, so the line shows how much GDP growth
+# the lights alone can account for.
+elasticity <- 0.15
+
 turkmen_data <- left_join(gdp_data, lights_data, by = "year") |>
   mutate(
-    gdp_index = real_gdp / real_gdp[year == 2015] * 100,
-    lights_index = lights / lights[year == 2015] * 100
+    gdp_index = real_gdp / real_gdp[year == min(years)] * 100,
+    lights_index = lights / lights[year == min(years)] * 100,
+    lights_implied_gdp_index = 100 * (lights / lights[year == min(years)])^elasticity
   )
 
 plot_data <- turkmen_data |>
-  select(year, `Official GDP` = gdp_index, `Nighttime lights` = lights_index) |>
+  select(year, `Official GDP` = gdp_index, `Lights-implied GDP` = lights_implied_gdp_index) |>
   pivot_longer(-year, names_to = "series", values_to = "index")
 
 #name each line at its right end instead of a legend
@@ -95,11 +104,12 @@ turkplot <- ggplot(plot_data, aes(year, index, linetype = series)) +
   geom_point(size = 3) +
   geom_text(data = line_labels, aes(label = series),
             hjust = 0, nudge_x = 0.12, family = "serif", size = 5) +
-  scale_x_continuous(breaks = years, expand = expansion(mult = c(0.02, 0.18))) +
+  scale_x_continuous(breaks = years, expand = expansion(mult = c(0.02, 0.26))) +
   labs(
-    title = "Official GDP vs Nighttime Lights",
+    title = "Official GDP vs Implied Lights GDP",
     x = NULL,
-    y = NULL
+    y = sprintf("GDP (index, %d = 100)", min(years)),
+    caption = "Sources: World Bank WDI; VIIRS VNL v2; elasticity 0.15 from Chiovelli et al. (2025)"
   ) +
   theme_tufte(base_size = 14, base_family = "serif", ticks = TRUE) +
   theme(legend.position = "none")
@@ -165,7 +175,7 @@ map_tags <- vapply(seq_along(years), function(i) {
 chart_tags <- vapply(seq_along(years), function(i) {
   f <- tempfile(fileext = ".png")
   draw_chart(years[i], f)
-  sprintf('<img class="ntl-chart" data-year="%d" alt="GDP vs lights index, %d marked" src="%s"%s>',
+  sprintf('<img class="ntl-chart" data-year="%d" alt="Official vs lights-implied GDP index, %d marked" src="%s"%s>',
           years[i], years[i], knitr::image_uri(f), if (i == 1) "" else " hidden")
 }, character(1))
 
