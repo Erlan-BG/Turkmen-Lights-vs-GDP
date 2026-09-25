@@ -89,11 +89,17 @@ print(turkmen_data) #removelater
 
 elasticity <- 0.15
 
+# baseline growth not captured by lights (stands in for the GWU constant + population term)
+# IMF staff real GDP growth 2015-2020, Bayar & Gogoberishvili (2023), IMF WP/23/207, Table 3.1
+imf_growth <- c(3.0, -1.0, 4.7, 0.9, -3.4, -3.0)
+alpha <- prod(1 + imf_growth / 100)^(1 / length(imf_growth)) - 1 # compound annual rate, ~0.16%
+
 turkmen_data <- turkmen_data |>
   mutate(
     gdp_index = real_gdp / real_gdp[year == 2014] * 100,
     lights_index = lights / lights[year == 2014] * 100,
-    lights_implied_gdp_index = 100 * (lights / lights[year == 2014])^elasticity
+    lights_implied_gdp_index = 100 * (lights / lights[year == 2014])^elasticity,
+    lights_implied_alpha_index = lights_implied_gdp_index * (1 + alpha)^(year - 2014)
   )
   
 # plotthedata

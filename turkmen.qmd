@@ -85,11 +85,17 @@ gdp_data <- wb_data(
 # the lights alone can account for.
 elasticity <- 0.15
 
+# baseline growth not captured by lights (stands in for the GWU constant + population term)
+# IMF staff real GDP growth 2015-2020, Bayar & Gogoberishvili (2023), IMF WP/23/207, Table 3.1
+imf_growth <- c(3.0, -1.0, 4.7, 0.9, -3.4, -3.0)
+alpha <- prod(1 + imf_growth / 100)^(1 / length(imf_growth)) - 1 # compound annual rate, ~0.16%
+
 turkmen_data <- left_join(gdp_data, lights_data, by = "year") |>
   mutate(
     gdp_index = real_gdp / real_gdp[year == min(years)] * 100,
     lights_index = lights / lights[year == min(years)] * 100,
-    lights_implied_gdp_index = 100 * (lights / lights[year == min(years)])^elasticity
+    lights_implied_gdp_index = 100 * (lights / lights[year == min(years)])^elasticity,
+    lights_implied_alpha_index = lights_implied_gdp_index * (1 + alpha)^(year - min(years))
   )
 
 plot_data <- turkmen_data |>
@@ -99,14 +105,20 @@ plot_data <- turkmen_data |>
 #name each line at its right end instead of a legend
 line_labels <- filter(plot_data, year == max(year))
 
+#gap between the lines (index points), per year for the slider
+turkmen_data <- mutate(turkmen_data, gap = gdp_index - lights_implied_gdp_index)
+
+#shade the gap between the lines
 turkplot <- ggplot(plot_data, aes(year, index, linetype = series)) +
+  geom_ribbon(data = turkmen_data, inherit.aes = FALSE,
+              aes(x = year, ymin = lights_implied_gdp_index, ymax = gdp_index),
+              fill = "grey90") +
   geom_line(linewidth = 1.2) +
   geom_point(size = 3) +
   geom_text(data = line_labels, aes(label = series),
             hjust = 0, nudge_x = 0.12, family = "serif", size = 5) +
   scale_x_continuous(breaks = years, expand = expansion(mult = c(0.02, 0.26))) +
   labs(
-    title = "Official GDP vs Implied Lights GDP",
     x = NULL,
     y = sprintf("GDP (index, %d = 100)", min(years)),
     caption = "Sources: World Bank WDI; VIIRS VNL v2; elasticity 0.15 from Chiovelli et al. (2025)"
@@ -117,9 +129,18 @@ turkplot <- ggplot(plot_data, aes(year, index, linetype = series)) +
 #same chart per year, with the slider's year marked in orange
 #11in wide to match the map image, so text renders at the same scale
 draw_chart <- function(yr, file) {
+  g <- filter(turkmen_data, year == yr)
   p <- turkplot +
     geom_vline(xintercept = yr, colour = "#e8590c", linewidth = 0.5) +
     geom_point(data = filter(plot_data, year == yr), colour = "#e8590c", size = 4)
+  #gap label beside the orange line; flips left in the last year to clear the line names
+  if (isTRUE(g$gap >= 0.5)) {
+    last <- yr == max(years)
+    p <- p + annotate("text", x = yr + if (last) -0.1 else 0.1,
+                      y = (g$gdp_index + g$lights_implied_gdp_index) / 2,
+                      label = sprintf("Gap: +%.0f points", g$gap), hjust = if (last) 1 else 0,
+                      family = "serif", fontface = "italic", size = 4.5, colour = "#e8590c")
+  }
   ggsave(file, p, width = 11, height = 4.5, dpi = 170, bg = "white")
 }
 
@@ -181,6 +202,13 @@ chart_tags <- vapply(seq_along(years), function(i) {
 
 ticks <- paste0("<span>", years, "</span>", collapse = "")
 
+#chart heading, one per year; the slider shows the matching one
+kpi_tags <- vapply(seq_along(years), function(i) {
+  sprintf('<div class="ntl-kpi-head" data-year="%d"%s>Official GDP vs lights-implied GDP, %s</div>',
+          years[i], if (i == 1) "" else " hidden",
+          if (i == 1) min(years) else sprintf("%d&ndash;%d", min(years), years[i]))
+}, character(1))
+
 cat(
   "```{=html}",
   '<div class="ntl">',
@@ -189,6 +217,7 @@ cat(
   sprintf('<input type="range" class="ntl-range" min="%d" max="%d" step="1" value="%d" aria-label="Year">',
           min(years), max(years), min(years)),
   sprintf('<div class="ntl-ticks">%s</div>', ticks),
+  kpi_tags,
   '<div class="ntl-panel ntl-chart-panel">', chart_tags, "</div>",
   "</div>",
   "```",
@@ -201,8 +230,9 @@ cat(
 .ntl { max-width: 1100px; margin: 0 auto; }
 .ntl-year { font-family: serif; font-size: 1.6rem; text-align: center; color: #444; }
 .ntl-map, .ntl-chart { width: 100%; height: auto; display: block; }
-.ntl-chart-panel { margin-top: 2rem; }
-.ntl-panel img[hidden] { display: none; }
+.ntl-chart-panel { margin-top: 1rem; }
+.ntl-kpi-head { font-family: serif; font-size: 0.85rem; text-transform: uppercase;
+                letter-spacing: 0.08em; color: #666; text-align: center; margin-top: 2.5rem; }.ntl [hidden] { display: none !important; }
 .ntl-range { width: 100%; accent-color: #e8590c; margin-top: 0.5rem; }
 .ntl-ticks { display: flex; justify-content: space-between; font-family: serif;
              font-size: 0.85rem; color: #666; }
@@ -211,7 +241,7 @@ cat(
 document.querySelectorAll('.ntl').forEach(box => {
   const range = box.querySelector('.ntl-range');
   const label = box.querySelector('.ntl-year');
-  const maps = box.querySelectorAll('img[data-year]');
+  const maps = box.querySelectorAll('[data-year]');
   const show = () => {
     maps.forEach(m => { m.hidden = m.dataset.year !== range.value; });
     label.textContent = range.value;
