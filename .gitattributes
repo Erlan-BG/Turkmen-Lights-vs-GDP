@@ -1,0 +1,2 @@
+_extensions/** linguist-vendored
+*.qmd linguist-language=R
