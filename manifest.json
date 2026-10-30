@@ -4,7 +4,7 @@
   "platform": "4.6.1",
   "metadata": {
     "appmode": "quarto-static",
-    "primary_rmd": "turkmen.qmd",
+    "primary_rmd": "story.qmd",
     "primary_html": null,
     "content_category": null,
     "has_parameters": false
@@ -98,81 +98,6 @@
         "Repository": "CRAN",
         "Date/Publication": "2025-02-28 17:44:52 UTC",
         "Built": "R 4.6.1; aarch64-apple-darwin23; 2026-06-25 21:54:07 UTC; unix"
-      }
-    },
-    "R.methodsS3": {
-      "Source": "CRAN",
-      "Repository": "https://cloud.r-project.org",
-      "description": {
-        "Package": "R.methodsS3",
-        "Version": "1.8.2",
-        "Depends": "R (>= 2.13.0)",
-        "Imports": "utils",
-        "Suggests": "codetools",
-        "Title": "S3 Methods Simplified",
-        "Authors@R": "c(person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"),\n                                          email = \"henrikb@braju.com\"))",
-        "Author": "Henrik Bengtsson [aut, cre, cph]",
-        "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
-        "Description": "Methods that simplify the setup of S3 generic functions and S3 methods.  Major effort has been made in making definition of methods as simple as possible with a minimum of maintenance for package developers.  For example, generic functions are created automatically, if missing, and naming conflict are automatically solved, if possible.  The method setMethodS3() is a good start for those who in the future may want to migrate to S4.  This is a cross-platform package implemented in pure R that generates standard S3 methods.",
-        "License": "LGPL (>= 2.1)",
-        "LazyLoad": "TRUE",
-        "URL": "https://github.com/HenrikBengtsson/R.methodsS3",
-        "BugReports": "https://github.com/HenrikBengtsson/R.methodsS3/issues",
-        "NeedsCompilation": "no",
-        "Packaged": "2022-06-13 18:23:35 UTC; hb",
-        "Repository": "CRAN",
-        "Date/Publication": "2022-06-13 22:00:14 UTC",
-        "Built": "R 4.6.0; ; 2026-04-25 15:50:08 UTC; unix"
-      }
-    },
-    "R.oo": {
-      "Source": "CRAN",
-      "Repository": "https://cloud.r-project.org",
-      "description": {
-        "Package": "R.oo",
-        "Version": "1.27.1",
-        "Depends": "R (>= 2.13.0), R.methodsS3 (>= 1.8.2)",
-        "Imports": "methods, utils",
-        "Suggests": "tools",
-        "Title": "R Object-Oriented Programming with or without References",
-        "Authors@R": "c(person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"),\n                                          email = \"henrikb@braju.com\"))",
-        "Author": "Henrik Bengtsson [aut, cre, cph]",
-        "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
-        "Description": "Methods and classes for object-oriented programming in R with or without references.  Large effort has been made on making definition of methods as simple as possible with a minimum of maintenance for package developers.  The package has been developed since 2001 and is now considered very stable.  This is a cross-platform package implemented in pure R that defines standard S3 classes without any tricks.",
-        "License": "LGPL (>= 2.1)",
-        "LazyLoad": "TRUE",
-        "URL": "https://henrikbengtsson.github.io/R.oo/,\nhttps://github.com/HenrikBengtsson/R.oo",
-        "BugReports": "https://github.com/HenrikBengtsson/R.oo/issues",
-        "NeedsCompilation": "no",
-        "Packaged": "2025-05-02 20:29:15 UTC; henrik",
-        "Repository": "CRAN",
-        "Date/Publication": "2025-05-02 21:00:05 UTC",
-        "Built": "R 4.6.0; ; 2026-04-25 23:18:34 UTC; unix"
-      }
-    },
-    "R.utils": {
-      "Source": "CRAN",
-      "Repository": "https://cloud.r-project.org",
-      "description": {
-        "Package": "R.utils",
-        "Version": "2.13.0",
-        "Depends": "R (>= 2.14.0), R.oo",
-        "Imports": "methods, utils, tools, R.methodsS3",
-        "Suggests": "datasets, digest (>= 0.6.10)",
-        "Title": "Various Programming Utilities",
-        "Authors@R": "c(person(\"Henrik\", \"Bengtsson\", role=c(\"aut\", \"cre\", \"cph\"),\n                                          email = \"henrikb@braju.com\"))",
-        "Author": "Henrik Bengtsson [aut, cre, cph]",
-        "Maintainer": "Henrik Bengtsson <henrikb@braju.com>",
-        "Description": "Utility functions useful when programming and developing R packages.",
-        "License": "LGPL (>= 2.1)",
-        "LazyLoad": "TRUE",
-        "URL": "https://henrikbengtsson.github.io/R.utils/,\nhttps://github.com/HenrikBengtsson/R.utils",
-        "BugReports": "https://github.com/HenrikBengtsson/R.utils/issues",
-        "NeedsCompilation": "no",
-        "Packaged": "2025-02-24 19:44:20 UTC; henrik",
-        "Repository": "CRAN",
-        "Date/Publication": "2025-02-24 21:20:02 UTC",
-        "Built": "R 4.6.0; ; 2026-04-26 02:22:50 UTC; unix"
       }
     },
     "R6": {
@@ -1816,6 +1741,40 @@
         "Built": "R 4.6.0; ; 2026-04-25 11:14:29 UTC; unix"
       }
     },
+    "svglite": {
+      "Source": "CRAN",
+      "Repository": "https://cloud.r-project.org",
+      "description": {
+        "Package": "svglite",
+        "Title": "An 'SVG' Graphics Device",
+        "Version": "2.2.2",
+        "Authors@R": "c(\n    person(\"Hadley\", \"Wickham\", , \"hadley@posit.co\", role = \"aut\"),\n    person(\"Lionel\", \"Henry\", , \"lionel@posit.co\", role = \"aut\"),\n    person(\"Thomas Lin\", \"Pedersen\", , \"thomas.pedersen@posit.co\", role = c(\"cre\", \"aut\"),\n           comment = c(ORCID = \"0000-0002-5147-4711\")),\n    person(\"T Jake\", \"Luciani\", , \"jake@apache.org\", role = \"aut\"),\n    person(\"Matthieu\", \"Decorde\", , \"matthieu.decorde@ens-lyon.fr\", role = \"aut\"),\n    person(\"Vaudor\", \"Lise\", , \"lise.vaudor@ens-lyon.fr\", role = \"aut\"),\n    person(\"Tony\", \"Plate\", role = \"ctb\",\n           comment = \"Early line dashing code\"),\n    person(\"David\", \"Gohel\", role = \"ctb\",\n           comment = \"Line dashing code and early raster code\"),\n    person(\"Yixuan\", \"Qiu\", role = \"ctb\",\n           comment = \"Improved styles; polypath implementation\"),\n    person(\"Håkon\", \"Malmedal\", role = \"ctb\",\n           comment = \"Opacity code\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"),\n           comment = c(ROR = \"03wc8by49\"))\n  )",
+        "Description": "A graphics device for R that produces 'Scalable Vector\n    Graphics'. 'svglite' is a fork of the older 'RSvgDevice' package.",
+        "License": "GPL (>= 2)",
+        "URL": "https://svglite.r-lib.org, https://github.com/r-lib/svglite",
+        "BugReports": "https://github.com/r-lib/svglite/issues",
+        "Depends": "R (>= 4.1)",
+        "Imports": "base64enc, cli, lifecycle, rlang (>= 1.1.0), systemfonts (>=\n1.3.0), textshaping (>= 0.3.0)",
+        "Suggests": "covr, fontquiver (>= 0.2.0), htmltools, knitr, rmarkdown,\ntestthat (>= 3.0.0), xml2 (>= 1.0.0)",
+        "LinkingTo": "cpp11, systemfonts, textshaping",
+        "VignetteBuilder": "knitr",
+        "Config/build/compilation-database": "true",
+        "Config/Needs/website": "tidyverse/tidytemplate",
+        "Config/testthat/edition": "3",
+        "Config/usethis/last-upkeep": "2025-04-25",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.2",
+        "SystemRequirements": "libpng",
+        "NeedsCompilation": "yes",
+        "Packaged": "2025-10-20 15:57:25 UTC; thomas",
+        "Author": "Hadley Wickham [aut],\n  Lionel Henry [aut],\n  Thomas Lin Pedersen [cre, aut] (ORCID:\n    <https://orcid.org/0000-0002-5147-4711>),\n  T Jake Luciani [aut],\n  Matthieu Decorde [aut],\n  Vaudor Lise [aut],\n  Tony Plate [ctb] (Early line dashing code),\n  David Gohel [ctb] (Line dashing code and early raster code),\n  Yixuan Qiu [ctb] (Improved styles; polypath implementation),\n  Håkon Malmedal [ctb] (Opacity code),\n  Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
+        "Maintainer": "Thomas Lin Pedersen <thomas.pedersen@posit.co>",
+        "Repository": "CRAN",
+        "Date/Publication": "2025-10-21 16:10:02 UTC",
+        "Built": "R 4.6.0; aarch64-apple-darwin23; 2026-04-26 02:23:12 UTC; unix",
+        "Archs": "svglite.so.dSYM"
+      }
+    },
     "sys": {
       "Source": "CRAN",
       "Repository": "https://cloud.r-project.org",
@@ -1841,6 +1800,40 @@
         "Date/Publication": "2024-10-04 09:40:02 UTC",
         "Built": "R 4.6.0; aarch64-apple-darwin23; 2026-04-25 15:48:55 UTC; unix",
         "Archs": "sys.so.dSYM"
+      }
+    },
+    "systemfonts": {
+      "Source": "CRAN",
+      "Repository": "https://cloud.r-project.org",
+      "description": {
+        "Type": "Package",
+        "Package": "systemfonts",
+        "Title": "System Native Font Finding",
+        "Version": "1.3.2",
+        "Authors@R": "c(\n    person(\"Thomas Lin\", \"Pedersen\", , \"thomas.pedersen@posit.co\", role = c(\"aut\", \"cre\"),\n           comment = c(ORCID = \"0000-0002-5147-4711\")),\n    person(\"Jeroen\", \"Ooms\", , \"jeroen@berkeley.edu\", role = \"aut\",\n           comment = c(ORCID = \"0000-0002-4035-0289\")),\n    person(\"Devon\", \"Govett\", role = \"aut\",\n           comment = \"Author of font-manager\"),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"),\n           comment = c(ROR = \"03wc8by49\"))\n  )",
+        "Description": "Provides system native access to the font catalogue. As font\n    handling varies between systems it is difficult to correctly locate\n    installed fonts across different operating systems. The 'systemfonts'\n    package provides bindings to the native libraries on Windows, macOS\n    and Linux for finding font files that can then be used further by e.g.\n    graphic devices. The main use is intended to be from compiled code but\n    'systemfonts' also provides access from R.",
+        "License": "MIT + file LICENSE",
+        "URL": "https://github.com/r-lib/systemfonts,\nhttps://systemfonts.r-lib.org",
+        "BugReports": "https://github.com/r-lib/systemfonts/issues",
+        "Depends": "R (>= 3.2.0)",
+        "Imports": "base64enc, grid, jsonlite, lifecycle, tools, utils",
+        "Suggests": "covr, farver, ggplot2, graphics, knitr, ragg, rmarkdown,\nsvglite, testthat (>= 2.1.0)",
+        "LinkingTo": "cpp11 (>= 0.2.1)",
+        "VignetteBuilder": "knitr",
+        "Config/build/compilation-database": "true",
+        "Config/Needs/website": "tidyverse/tidytemplate",
+        "Config/usethis/last-upkeep": "2025-04-23",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.2",
+        "SystemRequirements": "fontconfig, freetype2",
+        "NeedsCompilation": "yes",
+        "Packaged": "2026-03-05 12:24:52 UTC; thomas",
+        "Author": "Thomas Lin Pedersen [aut, cre] (ORCID:\n    <https://orcid.org/0000-0002-5147-4711>),\n  Jeroen Ooms [aut] (ORCID: <https://orcid.org/0000-0002-4035-0289>),\n  Devon Govett [aut] (Author of font-manager),\n  Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
+        "Maintainer": "Thomas Lin Pedersen <thomas.pedersen@posit.co>",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-03-05 13:10:02 UTC",
+        "Built": "R 4.6.0; aarch64-apple-darwin23; 2026-04-25 23:16:44 UTC; unix",
+        "Archs": "systemfonts.so.dSYM"
       }
     },
     "terra": {
@@ -1873,6 +1866,39 @@
         "Date/Publication": "2026-08-22 16:30:02 UTC",
         "Built": "R 4.6.1; aarch64-apple-darwin23; 2026-08-22 18:54:18 UTC; unix",
         "Archs": "terra.so.dSYM"
+      }
+    },
+    "textshaping": {
+      "Source": "CRAN",
+      "Repository": "https://cloud.r-project.org",
+      "description": {
+        "Package": "textshaping",
+        "Title": "Bindings to the 'HarfBuzz' and 'Fribidi' Libraries for Text\nShaping",
+        "Version": "1.0.5",
+        "Authors@R": "c(\n    person(\"Thomas Lin\", \"Pedersen\", , \"thomas.pedersen@posit.co\", role = c(\"cre\", \"aut\"),\n           comment = c(ORCID = \"0000-0002-5147-4711\")),\n    person(\"Posit Software, PBC\", role = c(\"cph\", \"fnd\"),\n           comment = c(ROR = \"03wc8by49\"))\n  )",
+        "Description": "Provides access to the text shaping functionality in the\n    'HarfBuzz' library and the bidirectional algorithm in the 'Fribidi'\n    library. 'textshaping' is a low-level utility package mainly for\n    graphic devices that expands upon the font tool-set provided by the\n    'systemfonts' package.",
+        "License": "MIT + file LICENSE",
+        "URL": "https://github.com/r-lib/textshaping",
+        "BugReports": "https://github.com/r-lib/textshaping/issues",
+        "Depends": "R (>= 3.2.0)",
+        "Imports": "lifecycle, stats, stringi, systemfonts (>= 1.3.0), utils",
+        "Suggests": "covr, grDevices, grid, knitr, rmarkdown, testthat (>= 3.0.0)",
+        "LinkingTo": "cpp11 (>= 0.2.1), systemfonts (>= 1.0.0)",
+        "VignetteBuilder": "knitr",
+        "Config/build/compilation-database": "true",
+        "Config/testthat/edition": "3",
+        "Config/usethis/last-upkeep": "2025-04-23",
+        "Encoding": "UTF-8",
+        "RoxygenNote": "7.3.2",
+        "SystemRequirements": "freetype2, harfbuzz, fribidi",
+        "NeedsCompilation": "yes",
+        "Packaged": "2026-03-06 09:57:58 UTC; thomas",
+        "Author": "Thomas Lin Pedersen [cre, aut] (ORCID:\n    <https://orcid.org/0000-0002-5147-4711>),\n  Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
+        "Maintainer": "Thomas Lin Pedersen <thomas.pedersen@posit.co>",
+        "Repository": "CRAN",
+        "Date/Publication": "2026-03-06 10:40:02 UTC",
+        "Built": "R 4.6.0; aarch64-apple-darwin23; 2026-04-25 23:19:28 UTC; unix",
+        "Archs": "textshaping.so.dSYM"
       }
     },
     "tibble": {
@@ -2281,29 +2307,38 @@
     }
   },
   "files": {
-    ".claude/settings.local.json": {
-      "checksum": "66125a4fb708d098311aa07dd2108191"
+    "_extensions/qmd-lab/closeread/_extension.yml": {
+      "checksum": "de5c87cb7b548acce43b94174ec6d737"
     },
-    ".RData": {
-      "checksum": "267bf511f78e10ab3e95deee014df9d2"
+    "_extensions/qmd-lab/closeread/closeread.css": {
+      "checksum": "dcb5d9d5aa6d32072e62010d2e014523"
     },
-    "README.md": {
-      "checksum": "c52538d0b7943a7c6e866d191d37bde3"
+    "_extensions/qmd-lab/closeread/closeread.js": {
+      "checksum": "067b10bc1e30269d4d4eb8b4a136c8d4"
     },
-    "tkm_lights_slider.qmd": {
-      "checksum": "f7c90a8abbb78b9fec4a90fc2e0c4427"
+    "_extensions/qmd-lab/closeread/closeread.lua": {
+      "checksum": "ce65c880a6e01e25d8ee394953cdc0f1"
     },
-    "turkmen.html": {
-      "checksum": "fdf42e2d63797ec7f1580a7b69b21149"
+    "_extensions/qmd-lab/closeread/closeread.scss": {
+      "checksum": "72c56837618ed56f69801423fdcaac00"
     },
-    "turkmen.qmd": {
-      "checksum": "59fe0a569f7f9c75d966dd63c20bfc05"
+    "_extensions/qmd-lab/closeread/intersection-observer.js": {
+      "checksum": "d961074bdb0f7163d4f4565fcab3455f"
     },
-    "turkmen.R": {
-      "checksum": "915ad52d98878a0f5d5f60e036f49ef4"
+    "_extensions/qmd-lab/closeread/scrollama.min.js": {
+      "checksum": "a61b284d238bcd95ed4b788a3232a5e4"
     },
-    "VIIRS Data/.RData": {
-      "checksum": "2a624fc710b9deb2f8a120e6c3806e4c"
+    "_extensions/qmd-lab/closeread/spacer.lua": {
+      "checksum": "30de0e4f8b74c7897517547771e46d7c"
+    },
+    "lights_by_country.csv": {
+      "checksum": "5067845599b6a1e9dd28e2e10dd918fb"
+    },
+    "story.css": {
+      "checksum": "f31af8e83d453c8db95069cd079a3260"
+    },
+    "story.qmd": {
+      "checksum": "e5f60dd1086fe380a1da8d0cbe65a44c"
     },
     "VIIRS Data/2014/TKM_VNL_v2_2014_average_masked.tif": {
       "checksum": "68bc4b135c61b9c9188babc300530d54"

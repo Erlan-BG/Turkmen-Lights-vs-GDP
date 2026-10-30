@@ -1,0 +1,583 @@
+---
+title: "The Country That Reports No Bad Years"
+author: "Erlan Benedis-Grab"
+date: "2026-09-30"
+date-format: "MMMM YYYY"
+language:
+  title-block-author-single: "Author"
+  title-block-published: "Created"
+format:
+  closeread-html:
+    css: story.css
+    code-tools: false
+    toc: false
+    linkcolor: "#e8590c"
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(terra)
+library(sf)
+library(rnaturalearth)
+library(rnaturalearthdata) #ne_countries(scale = "medium") needs it; listing it also puts it in manifest.json
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(wbstats)
+library(ggthemes)
+
+years <- 2014:2021
+
+tif_path <- function(yr) {
+  file.path("VIIRS Data", yr, sprintf("TKM_VNL_v2_%d_average_masked.tif", yr))
+}
+
+tkm_sf <- ne_countries(country = "Turkmenistan", scale = "medium", returnclass = "sf")
+tkm <- vect(tkm_sf)
+
+#sumlights
+lights_data <- data.frame(
+  year = years,
+  lights = vapply(years, function(yr) {
+    r <- rast(tif_path(yr)) |> crop(tkm) |> mask(tkm)
+    global(r, fun = "sum", na.rm = TRUE)[[1]]
+  }, numeric(1))
+)
+
+#pullwbgdp
+gdp_data <- wb_data(
+  indicator = c(real_gdp = "NY.GDP.MKTP.KD"), #real GDP adj for inflation
+  country = "TKM",
+  start_date = min(years),
+  end_date = max(years)
+) |>
+  transmute(year = as.integer(date), real_gdp) |>
+  arrange(year)
+
+# GDP-lights elasticity: Chiovelli, Michalopoulos, Papaioannou & Regan (2025), GWU CER WP 2025-009
+elasticity <- 0.15
+
+turkmen_data <- left_join(gdp_data, lights_data, by = "year") |>
+  mutate(
+    gdp_index = real_gdp / real_gdp[year == min(years)] * 100,
+    lights_index = lights / lights[year == min(years)] * 100,
+    lights_implied_gdp_index = 100 * (lights / lights[year == min(years)])^elasticity,
+    gap = gdp_index - lights_implied_gdp_index
+  )
+
+plot_data <- turkmen_data |>
+  select(year, `Official GDP` = gdp_index, `Lights-implied GDP` = lights_implied_gdp_index) |>
+  pivot_longer(-year, names_to = "series", values_to = "index")
+
+last_year <- filter(turkmen_data, year == max(years))
+
+#series drawn in this near-black are restyled by story.css when the chart is zoomed on scroll
+morph_colour <- "#000001"
+
+#ggplot as inline SVG (not an image), so CSS can recolour the line as the reader scrolls
+inline_svg <- function(p, width = 8, height = 5) {
+  svg <- svglite::svgstring(width = width, height = height)
+  print(p)
+  invisible(dev.off())
+  cat("```{=html}", sub("^<\\?xml[^>]*>", "", svg()), "```", sep = "\n")
+}
+
+#one chart per scroll step; same axes each time so the charts don't jump
+gdp_chart <- function(show = "Official GDP", gap = FALSE, colour = "black") {
+  d <- filter(plot_data, series %in% show)
+  p <- ggplot(d, aes(year, index, linetype = series))
+  if (gap) {
+    p <- p +
+      geom_ribbon(data = turkmen_data, inherit.aes = FALSE,
+                  aes(x = year, ymin = lights_implied_gdp_index, ymax = gdp_index),
+                  fill = "grey90") +
+      annotate("text", x = max(years) - 0.1,
+               y = (last_year$gdp_index + last_year$lights_implied_gdp_index) / 2,
+               label = sprintf("Gap: +%.0f points", last_year$gap), hjust = 1,
+               family = "serif", fontface = "italic", size = 4.5, colour = "#e8590c")
+  }
+  p +
+    geom_line(linewidth = 1.2, colour = colour) +
+    geom_point(size = 3, colour = colour) +
+    geom_text(data = filter(d, year == max(years)), aes(label = series),
+              hjust = 0, nudge_x = 0.12, family = "serif", size = 5, colour = colour) +
+    scale_x_continuous(breaks = years, expand = expansion(mult = c(0.02, 0.3))) +
+    scale_y_continuous(limits = c(90, 160)) +
+    scale_linetype_manual(values = c(`Official GDP` = "solid", `Lights-implied GDP` = "solid")) +
+    labs(
+      x = NULL,
+      y = sprintf("GDP (index, %d = 100)", min(years)),
+      caption = "Sources: World Bank WDI; VIIRS VNL v2; elasticity 0.15 from Chiovelli et al. (2025)"
+    ) +
+    theme_tufte(base_size = 14, base_family = "serif", ticks = TRUE) +
+    theme(legend.position = "none",
+          axis.line.x = element_line(colour = "black", linewidth = 0.5))
+}
+```
+
+Turkmenistan is a desert country of roughly six to seven million people on the eastern shore of the Caspian Sea. It sits on the world's fourth-largest proven reserves of natural gas. Since independence from the Soviet Union in 1991 it has become one of the most closed states on earth, scoring 1 out of 100 in [Freedom House's 2025 ranking](https://freedomhouse.org/country/turkmenistan/freedom-world/2025), below even North Korea.
+
+Its founding leader was [Saparmurat Niyazov](https://en.wikipedia.org/wiki/Saparmurat_Niyazov), or Turkmenbashi ("Head of the Turkmen"), who renamed the months after himself and his mother, put up a gold statue of himself that rotated to follow the sun, and wrote the [Ruhnama](https://en.wikipedia.org/wiki/Ruhnama), a book of his own spiritual and moral guidance that became mandatory reading in schools. After his death, power passed in 2007 to [Gurbanguly Berdimuhamedov](https://en.wikipedia.org/wiki/Gurbanguly_Berdimuhamedow), a health minister from Niyazov's inner circle. In 2022 he handed the presidency to his son Serdar, cementing dynastic rule.
+
+By its own account, the country has not had a bad year in a long time. According to Turkmenstat figures republished by the World Bank, real GDP grew by 10 percent in 2014 and by about 6 percent in every year from 2015 to 2021. That run includes a year in which the manat was devalued by about a fifth, a year in which Russia stopped buying Turkmen gas, and a global pandemic.
+
+::: {.column-screen style="background-image:url(https://upload.wikimedia.org/wikipedia/commons/8/88/Sapar_Murat_Niyazov_Monument.jpg); background-size: cover; height: 450px; background-position: center 20%; background-repeat: no-repeat;"}
+:::
+<figcaption>Gold statue of Saparmurat Niyazov in Ashgabat.<br>(Photo: Ekki3, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/), via [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Sapar_Murat_Niyazov_Monument.jpg))</figcaption>
+
+\
+
+There are good reasons to doubt the official numbers. Turkmenistan ranks near the bottom of every press-freedom index and publishes few of the figures behind its public statistics.
+
+I was inspired by work on North Korea, where researchers used satellite images of night lights to track an economy whose government publishes almost no reliable figures. The approach has since become a useful way to check growth claims in countries whose official statistics are weak, missing, or politically managed. The idea is simple in theory: busier economies give off more light at night, and satellites record that light no matter what a government reports. This project asks: **does nighttime light data support Turkmenistan's reported GDP growth from 2014 to 2021?**
+
+
+:::{.cr-section layout="sidebar-left"}
+
+:::{#cr-official .morph-chart}
+```{r}
+#| output: asis
+inline_svg(
+  gdp_chart("Official GDP", colour = morph_colour) +
+    labs(y = NULL, caption = "Source: World Bank") +
+    theme(axis.text.y = element_blank(), axis.ticks.y = element_blank())
+)
+```
+:::
+
+According to the government, Turkmenistan's economy grew every single year from `r min(years)` to `r max(years)`, ending the period `r round(last_year$gdp_index - 100)` percent larger than where it began. @cr-official
+
+:::{focus-on="cr-official" scale-by="1.08"}
+That is a steady climb through global energy shocks, the loss of its gas buyers, and a global pandemic, without a single bad year.
+
+[Economists](https://rhg.com/research/chinas-gdp-the-costs-of-omerta/) have pointed out that growth figures this smooth are themselves a warning sign that the numbers may be managed.
+:::
+
+:::
+
+
+## Calculating economic growth from satellite data
+
+Every night, the VIIRS sensor on the Suomi NPP weather satellite passes over Turkmenistan at around 1:30 a.m. and records how much light reaches space from every patch of ground about half a kilometre wide. The [Earth Observation Group](https://eogdata.mines.edu/products/vnl/) at the Colorado School of Mines turns these readings into a [yearly map](https://doi.org/10.3390/rs13050922), filtering out clouds, moonlight and short-lived light such as wildfires. For each year from `r min(years)` to `r max(years)`, I added up all the light inside Turkmenistan's borders to get a single number for the country.
+
+Turning light into GDP needs one more step, because light and the economy do not grow one for one. Economists have [measured](https://doi.org/10.1257/aer.102.2.994) how closely the two move together across many countries. I use a [recent estimate](https://www2.gwu.edu/~forcpgm/2025-009.pdf) drawn from countries around the world: every 10 percent more light goes with about `r elasticity * 10` percent more GDP. Applying that to Turkmenistan's light gives a different estimate of how much its economy grew.
+
+To compare the two I benchmarked both lines to 100 starting in `r min(years)`. For official GDP, I divide each year's real GDP from the World Bank by its `r min(years)` value. For the lights estimate, I take each year's total light as a share of its `r min(years)` level and raise it to the power of the elasticity, β:
+
+$$
+\text{Lights-implied GDP}_t = 100 \times \left(\frac{\text{Light}_t}{\text{Light}_{`r min(years)`}}\right)^{\beta}, \qquad \beta = `r elasticity`
+$$
+
+If the official figures are right, the two lines should more or less rise together.
+
+{{< spacer 35svh >}}
+
+:::{.cr-section layout="overlay-left"}
+
+:::{#cr-nightmap}
+```{r}
+#| label: night-map
+#| fig-width: 11
+#| fig-height: 8
+# City windows (lon/lat), drawn as boxes on the map
+cities <- data.frame(
+  name = c("Ashgabat", "Mary", "Türkmenbaşy", "Daşoguz"),
+  xmin = c(57.95, 61.40, 52.70, 59.50),
+  xmax = c(58.85, 62.30, 53.60, 60.40),
+  ymin = c(37.70, 37.35, 39.80, 41.60),
+  ymax = c(38.20, 37.85, 40.30, 42.10)
+)
+
+lights_df <- tif_path(min(years)) |>
+  rast() |>
+  crop(tkm) |>
+  mask(tkm) |>
+  as.data.frame(xy = TRUE, na.rm = TRUE) |>
+  setNames(c("x", "y", "radiance")) |>
+  filter(radiance > 1)
+
+# Colour tops out at city brightness, so flares don't wash out the towns
+base_map <- function(lights_df) {
+  ggplot() +
+    geom_sf(data = tkm_sf, fill = "grey93", colour = "grey70", linewidth = 0.3) +
+    geom_tile(data = lights_df, aes(x, y, fill = radiance)) +
+    scale_fill_gradient(low = "#fcd9b8", high = "#e8590c",
+                        trans = "log10", limits = c(1, 60),
+                        oob = scales::squish, guide = "none")
+}
+
+country_map <- base_map(lights_df) +
+  geom_rect(data = cities, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = NA, colour = "grey30", linewidth = 0.3) +
+  geom_text(data = cities, aes(xmax, ymax, label = name), hjust = 0, vjust = 0,
+            nudge_x = 0.05, family = "serif", size = 4, colour = "grey20") +
+  coord_sf(expand = FALSE) +
+  theme_void(base_family = "serif") +
+  theme(plot.margin = margin(5, 5, 5, 5))
+
+country_map
+```
+:::
+
+:::{focus-on="cr-nightmap"}
+{{< spacer 40svh >}}
+:::
+
+Each orange dot is a patch of ground that gave off light at night in `r min(years)`. The deeper the orange, the brighter it was. @cr-nightmap
+
+Light gathers in a few places: Ashgabat and the string of towns along the southern border, [@cr-nightmap]{pan-to="34%,-24%" scale-by="2"}
+
+the oases around Mary and Daşoguz, [@cr-nightmap]{pan-to="6%,11%" scale-by="1.25"}
+
+the Amu Darya valley in the east, [@cr-nightmap]{pan-to="-35%,0%" scale-by="1.8"}
+
+and the port city of Türkmenbaşy and the oil and gas fields along the Caspian coast, where some of the brightest spots are gas flares. [@cr-nightmap]{pan-to="88%,-5%" scale-by="1.8"}
+
+:::
+
+:::{.cr-section layout="overlay-right"}
+
+```{r}
+#| include: false
+#empty frame for the official vs lights-implied chart.
+#x scale and limits match gdp_chart() so the lines can be added later without the chart jumping.
+#with show_x = FALSE the year labels are drawn transparent, so both versions line up exactly
+benchmark_frame <- function(show_x = FALSE) {
+  x_colour <- if (show_x) "black" else "transparent"
+  ggplot(plot_data, aes(year, index)) +
+    geom_blank() +
+    scale_x_continuous(breaks = years, expand = expansion(mult = c(0.02, 0.3))) +
+    scale_y_continuous(limits = c(90, 160), breaks = seq(90, 160, 10)) +
+    labs(x = NULL, y = sprintf("GDP (index, %d = 100)", min(years))) +
+    theme_tufte(base_size = 14, base_family = "serif", ticks = TRUE) +
+    theme(axis.line.y = element_line(colour = "black", linewidth = 0.5),
+          axis.line.x = element_line(colour = x_colour, linewidth = 0.5),
+          axis.text.x = element_text(colour = x_colour),
+          axis.ticks.x = element_line(colour = x_colour))
+}
+```
+
+:::{#cr-benchmark .morph-chart .full-page}
+```{r}
+#| output: asis
+inline_svg(benchmark_frame(), width = 14, height = 8) #wide, to fill the whole page
+```
+:::
+
+:::{#cr-benchmark-years .morph-chart .full-page}
+```{r}
+#| output: asis
+inline_svg(benchmark_frame(show_x = TRUE), width = 14, height = 8)
+```
+:::
+
+```{r}
+#| include: false
+#both series on the same frame: lights-implied in the story orange, official in muted grey
+series_colours <- c(`Lights-implied GDP` = "#e8590c", `Official GDP` = "grey60")
+
+#the gap ribbon and its label use these one-off colours so story.css can find and animate them
+gap_fill <- "#FBE3D4"
+gap_text_colour <- "#E8590D"
+
+peak_gap <- slice_max(turkmen_data, gap, n = 1)
+
+#gap_year puts the arrow and label on one year: the widest gap in the scroll chart,
+#the slider's year in the interactive chart, so both charts share one style
+benchmark_lines <- function(gap = FALSE, gap_year = peak_gap$year, gap_label = "Peak gap") {
+  p <- benchmark_frame(show_x = TRUE)
+  g <- filter(turkmen_data, year == gap_year)
+  if (gap) {
+    p <- p +
+      geom_ribbon(data = turkmen_data, inherit.aes = FALSE,
+                  aes(x = year, ymin = lights_implied_gdp_index, ymax = gdp_index),
+                  fill = gap_fill)
+  }
+  if (gap && isTRUE(g$gap >= 3)) {
+    #label sits left of the arrow, except in the early years where it would hit the y-axis
+    left <- gap_year >= mean(years)
+    p <- p +
+      #up arrow spanning the gap, from the lights line to the official line
+      annotate("segment", x = gap_year, xend = gap_year,
+               y = g$lights_implied_gdp_index + 1.5, yend = g$gdp_index - 1.5,
+               arrow = arrow(length = unit(0.25, "cm"), type = "closed"),
+               linewidth = 0.8, colour = gap_text_colour, fill = gap_text_colour) +
+      annotate("text", x = gap_year + if (left) -0.12 else 0.12,
+               y = (g$gdp_index + g$lights_implied_gdp_index) / 2,
+               label = sprintf("%s: %.0f points", gap_label, g$gap), hjust = if (left) 1 else 0,
+               family = "serif", fontface = "italic", size = 6, colour = gap_text_colour)
+  }
+  p +
+    geom_line(aes(colour = series), linewidth = 1.2) +
+    geom_point(aes(colour = series), size = 3) +
+    geom_text(data = filter(plot_data, year == max(years)),
+              aes(label = series, colour = series),
+              hjust = 0, nudge_x = 0.12, family = "serif", size = 5) +
+    scale_colour_manual(values = series_colours) +
+    theme(legend.position = "none")
+}
+```
+
+:::{#cr-benchmark-lines .morph-chart .full-page}
+```{r}
+#| output: asis
+inline_svg(benchmark_lines(), width = 14, height = 8)
+```
+:::
+
+:::{#cr-benchmark-gap .morph-chart .gap-chart .full-page}
+```{r}
+#| output: asis
+inline_svg(benchmark_lines(gap = TRUE), width = 14, height = 8)
+```
+:::
+
+```{r}
+#| include: false
+#comparison countries: lights summed by othercountries.R (VNL v2.1), official real GDP from the World Bank
+country_lights <- read.csv("lights_by_country.csv")
+
+country_gdp <- wb_data(
+  indicator = c(real_gdp = "NY.GDP.MKTP.KD"),
+  country = unique(country_lights$iso3),
+  start_date = min(years),
+  end_date = max(years)
+) |>
+  transmute(iso3 = iso3c, country, year = as.integer(date), real_gdp)
+
+country_growth <- inner_join(country_lights, country_gdp, by = c("iso3", "year")) |>
+  group_by(iso3, country) |>
+  summarise(
+    lights_growth = 100 * (lights[year == max(years)] / lights[year == min(years)] - 1),
+    gdp_growth = 100 * (real_gdp[year == max(years)] / real_gdp[year == min(years)] - 1),
+    .groups = "drop"
+  ) |>
+  mutate(tkm = iso3 == "TKM")
+```
+
+:::{#cr-rug .morph-chart .rug-morph .full-page}
+```{r}
+#| output: asis
+#lights growth vs official growth, with rugs on both axes; Turkmenistan in the story orange
+inline_svg(
+  ggplot(country_growth, aes(lights_growth, gdp_growth, colour = tkm)) +
+    geom_rug(linewidth = 0.8) +
+    geom_point(size = 3) +
+    geom_text(aes(label = country), hjust = 0, nudge_x = 1, family = "serif", size = 5) +
+    scale_colour_manual(values = c(`TRUE` = "#e8590c", `FALSE` = "grey60"), guide = "none") +
+    scale_x_continuous(expand = expansion(mult = c(0.12, 0.25))) +
+    labs(
+      x = sprintf("Growth in nighttime lights, %d–%d (%%)", min(years), max(years)),
+      y = sprintf("Official real GDP growth, %d–%d (%%)", min(years), max(years)),
+      caption = "Sources: World Bank WDI; VIIRS VNL v2.1"
+    ) +
+    theme_tufte(base_size = 14, base_family = "serif", ticks = TRUE) +
+    theme(axis.line = element_line(colour = "black", linewidth = 0.5)),
+  width = 14, height = 8
+)
+```
+:::
+
+To compare the two, both series start at 100 in `r min(years)`. A value of 153 would mean the economy is 53 percent larger than in `r min(years)`. @cr-benchmark
+
+…and from there, we look ahead to `r max(years)`. @cr-benchmark-years
+
+:::{focus-on="cr-benchmark-lines"}
+{{< spacer 40svh >}}
+:::
+
+:::{focus-on="cr-benchmark-gap"}
+{{< spacer 40svh >}}
+:::
+
+:::{focus-on="cr-rug"}
+{{< spacer 60svh >}}
+:::
+
+:::
+
+## How does Turkmenistan compare with other countries?
+
+To find out, I added up the light in five other countries the same way: Azerbaijan and Uzbekistan, Georgia and Malaysia, and Germany as a benchmark. Each dot compares a country's growth in lights from `r min(years)` to `r max(years)` with its official GDP growth. Using the same method, one country stands out.
+
+**Turkmenistan's official GDP says the economy grew by about 53% from 2014 to 2021, while the lights suggest it shrank by about 3%**. That's a gap of 56 points, or roughly 6.7 percentage points a year.
+
+For the other five, the gap between official growth and lights-implied growth ranges from 2 points (Azerbaijan) to 48 points (Uzbekistan). Turkmenistan's gap, 56 points, is about 2 standard deviations above their average.
+
+```{=html}
+<script>
+// Closeread zooms a sticky by setting its inline transform; mirror that as a
+// class so story.css can turn the line orange and fade the points while zoomed
+document.querySelectorAll('.morph-chart').forEach(sticky => {
+  new MutationObserver(() => {
+    sticky.classList.toggle('is-zoomed', sticky.style.transform.includes('scale'));
+  }).observe(sticky, { attributes: true, attributeFilter: ['style'] });
+});
+
+// Slow-motion rearrangement into the rug plot: each country's dot starts on a dot
+// of the gap chart and glides to its place, then the axes, rugs and labels fade in.
+// Turkmenistan's dot starts on the last official-GDP point; the others start on the
+// last lights-implied points. Both charts are the same size, so SVG coordinates match.
+document.querySelectorAll('.rug-morph').forEach(rug => {
+  const gap = document.getElementById('cr-benchmark-gap');
+  const fillOf = el => (el.getAttribute('style').match(/fill:\s*(#[0-9A-F]{6})/i) || [])[1];
+  let wasActive = false;
+
+  const morph = () => {
+    const from = [...gap.querySelectorAll('svg circle')];
+    const official = from.filter(c => /#999999/i.test(fillOf(c)));
+    const lights = from.filter(c => /#E8590C/i.test(fillOf(c)));
+    const dots = [...rug.querySelectorAll('svg circle')];
+    const tkm = dots.find(c => /#E8590C/i.test(fillOf(c)));
+    const others = dots.filter(c => c !== tkm);
+    const sources = new Map([[tkm, official.at(-1)]]);
+    others.forEach((c, i) => sources.set(c, lights.at(-1 - i) || lights[0]));
+
+    const rest = [...rug.querySelectorAll('svg rect, svg line, svg polyline, svg polygon, svg path, svg text')];
+
+    // jump everything to its starting state with no transition...
+    sources.forEach((src, dot) => {
+      if (!dot || !src) return;
+      dot.dataset.fill ??= dot.style.fill;
+      dot.dataset.stroke ??= dot.style.stroke;
+      dot.style.transition = 'none';
+      dot.style.transform = `translate(${src.getAttribute('cx') - dot.getAttribute('cx')}px, ${src.getAttribute('cy') - dot.getAttribute('cy')}px)`;
+      dot.style.fill = dot.style.stroke = fillOf(src);
+    });
+    rest.forEach(el => { el.style.transition = 'none'; el.style.opacity = 0; });
+    rug.getBoundingClientRect(); // force a reflow so the starting state is drawn
+
+    // ...then let it all play out slowly
+    [...sources.keys()].forEach((dot, i) => {
+      if (!dot) return;
+      dot.style.transition = `transform 3s cubic-bezier(.45, 0, .2, 1) ${0.4 + i * 0.2}s, fill 3s ease ${0.4 + i * 0.2}s, stroke 3s ease ${0.4 + i * 0.2}s`;
+      dot.style.transform = '';
+      dot.style.fill = dot.dataset.fill;
+      dot.style.stroke = dot.dataset.stroke;
+    });
+    rest.forEach(el => {
+      const delay = el.tagName === 'text' ? 3.4 : 1.2; //labels last, once the dots have landed
+      el.style.transition = `opacity 1.4s ease ${delay}s`;
+      el.style.opacity = '';
+    });
+  };
+
+  new MutationObserver(() => {
+    const active = rug.classList.contains('cr-active');
+    if (active && !wasActive && gap) morph();
+    wasActive = active;
+  }).observe(rug, { attributes: true, attributeFilter: ['class'] });
+});
+</script>
+```
+
+{{< spacer 20svh >}}
+
+## Now, explore it year by year!
+
+```{r}
+#| label: year-slider
+#| output: asis
+#every year's lights, cropped and masked the same way as the night map above
+lights <- lapply(years, function(yr) {
+  tif_path(yr) |>
+    rast() |>
+    crop(tkm) |>
+    mask(tkm) |>
+    as.data.frame(xy = TRUE, na.rm = TRUE) |>
+    setNames(c("x", "y", "radiance")) |>
+    filter(radiance > 1)
+})
+
+#same look as the night map above, for any year's lights
+year_country_map <- function(lights_df) {
+  base_map(lights_df) +
+    geom_rect(data = cities, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+              fill = NA, colour = "grey30", linewidth = 0.3) +
+    geom_text(data = cities, aes(xmax, ymax, label = name), hjust = 0, vjust = 0,
+              nudge_x = 0.05, family = "serif", size = 4, colour = "grey20") +
+    coord_sf(expand = FALSE) +
+    theme_void(base_family = "serif") +
+    theme(plot.margin = margin(5, 5, 5, 5))
+}
+
+city_map <- function(lights_df, city) {
+  b <- filter(cities, name == city)
+  base_map(filter(lights_df, between(x, b$xmin, b$xmax), between(y, b$ymin, b$ymax))) +
+    coord_sf(xlim = c(b$xmin, b$xmax), ylim = c(b$ymin, b$ymax), expand = FALSE) +
+    labs(title = city) +
+    theme_void(base_family = "serif", base_size = 12) +
+    theme(plot.title = element_text(colour = "grey20", hjust = 0.5),
+          panel.border = element_rect(fill = NA, colour = "grey30", linewidth = 0.4),
+          plot.margin = margin(5, 5, 5, 5))
+}
+
+#country map on top, four city close-ups underneath
+draw_year <- function(lights_df, file) {
+  png(file, width = 11, height = 11, units = "in", res = 170, bg = "white")
+  grid::grid.newpage()
+  grid::pushViewport(grid::viewport(layout = grid::grid.layout(2, 4, heights = grid::unit(c(7.9, 3.1), "null"))))
+  at <- function(p, row, col) print(p, vp = grid::viewport(layout.pos.row = row, layout.pos.col = col))
+  at(year_country_map(lights_df), 1, 1:4)
+  for (i in seq_len(nrow(cities))) at(city_map(lights_df, cities$name[i]), 2, i)
+  dev.off()
+}
+
+#the scroll gap chart, with the arrow and label moved to the slider's year.
+#same 14:8 shape as the scroll chart; 11in wide to match the map image, so text renders at the same scale
+draw_chart <- function(yr, file) {
+  ggsave(file, benchmark_lines(gap = TRUE, gap_year = yr, gap_label = "Gap"),
+         width = 11, height = 11 * 8 / 14, dpi = 170, bg = "white")
+}
+
+#one image per year, all embedded; the slider shows the one for its year
+year_imgs <- function(cls, alt, draw) {
+  vapply(seq_along(years), function(i) {
+    f <- tempfile(fileext = ".png")
+    draw(i, f)
+    sprintf('<img class="%s" data-year="%d" alt="%s, %d" src="%s"%s>',
+            cls, years[i], alt, years[i], knitr::image_uri(f), if (i == 1) "" else " hidden")
+  }, character(1))
+}
+
+map_tags <- year_imgs("ntl-map", "Nighttime lights", \(i, f) draw_year(lights[[i]], f))
+chart_tags <- year_imgs("ntl-chart", "Official vs lights-implied GDP index", \(i, f) draw_chart(years[i], f))
+
+ticks <- paste0("<span>", years, "</span>", collapse = "")
+
+cat(
+  "```{=html}",
+  '<div class="ntl">',
+  sprintf('<div class="ntl-year">%d</div>', min(years)),
+  '<div class="ntl-panel">', map_tags, "</div>",
+  sprintf('<input type="range" class="ntl-range" min="%d" max="%d" step="1" value="%d" aria-label="Year">',
+          min(years), max(years), min(years)),
+  sprintf('<div class="ntl-ticks">%s</div>', ticks),
+  '<div class="ntl-panel ntl-chart-panel">', chart_tags, "</div>",
+  "</div>",
+  "```",
+  sep = "\n"
+)
+```
+
+```{=html}
+<script>
+//year slider: show the map and chart for the chosen year
+document.querySelectorAll('.ntl').forEach(box => {
+  const range = box.querySelector('.ntl-range');
+  const label = box.querySelector('.ntl-year');
+  const panels = box.querySelectorAll('[data-year]');
+  const show = () => {
+    panels.forEach(m => { m.hidden = m.dataset.year !== range.value; });
+    label.textContent = range.value;
+  };
+  range.addEventListener('input', show);
+  show();
+});
+</script>
+```

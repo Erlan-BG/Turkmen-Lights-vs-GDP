@@ -1,0 +1,127 @@
+/* Story styling: Quarto's default fonts (to match turkmen.qmd) with the orange accent #e8590c */
+
+/* Closeread's own style settings (html:root so these win over the extension's defaults) */
+html:root {
+  --tkm-orange: #e8590c;
+  --tkm-text: #212529;
+
+  --cr-section-background-color: white;
+  --cr-narrative-background-color-overlay: rgba(255, 255, 255, 0.96);
+  --cr-narrative-text-color-overlay: var(--tkm-text);
+  --cr-narrative-background-color-sidebar: transparent;
+  --cr-narrative-text-color-sidebar: var(--tkm-text);
+  --cr-narrative-border-radius: 2px;
+  --cr-narrative-overlay-max-width: 30rem;
+  --cr-narrative-font-size: 1.2rem;
+}
+
+/* scroll text: white cards with an orange rule on the left */
+.cr-section .narrative-col .narrative {
+  border-left: 4px solid var(--tkm-orange);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  text-align: left;
+}
+
+/* sidebar text sits on the page, so no shadow */
+.cr-section.sidebar-left .narrative-col .narrative,
+.cr-section.sidebar-right .narrative-col .narrative {
+  box-shadow: none;
+  padding-left: 1rem;
+}
+
+/* photo captions: small, grey, left-aligned */
+figcaption {
+  font-size: 0.85rem;
+  color: #6c757d;
+  text-align: left;
+  margin-top: 0.4rem;
+}
+
+/* more room between the title and the Author / Created line */
+#title-block-header .quarto-title-meta {
+  margin-top: 2rem;
+}
+
+/* scroll charts drawn as inline SVG: parts in #000001 (morph_colour in story.qmd)
+   turn orange and lose their points when Closeread zooms the chart */
+.morph-chart svg {
+  display: block;
+  width: 92%; /* leaves room for the slight zoom, so no edge gets cut off */
+  height: auto;
+  margin: 0 auto;
+}
+
+.morph-chart [style*="#000001"] {
+  transition: stroke 0.8s ease-in-out, fill 0.8s ease-in-out, opacity 0.8s ease-in-out, transform 0.8s ease-in-out;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.morph-chart.is-zoomed polyline[style*="#000001"] {
+  stroke: var(--tkm-orange) !important;
+  stroke-linecap: round !important;
+}
+
+.morph-chart.is-zoomed circle[style*="#000001"] {
+  opacity: 0;
+  transform: scale(0);
+}
+
+.morph-chart.is-zoomed text[style*="#000001"] {
+  fill: var(--tkm-orange) !important;
+}
+
+/* full-page scroll charts (overlay layout): the chart fills the screen behind the text cards */
+.morph-chart.full-page svg {
+  width: 100%;
+  max-height: 100vh;
+}
+
+/* overlay-right cards sit closer to the right edge (Closeread's default margin is 5%) */
+.cr-section.overlay-right .narrative-col {
+  margin-right: 1.5%;
+}
+
+/* gap chart: when its scroll step becomes active, the gap ribbon wipes in from
+   2014 to 2021, then the peak-gap arrow and label fade in.
+   Ribbon and label are found by their one-off colours (gap_fill, gap_text_colour in story.qmd) */
+.gap-chart polygon[style*="#FBE3D4" i] {
+  clip-path: inset(0 100% 0 0);
+}
+
+.gap-chart [style*="#E8590D" i] {
+  opacity: 0;
+}
+
+.gap-chart.cr-active polygon[style*="#FBE3D4" i] {
+  animation: gap-wipe 1.6s ease-in-out 0.4s forwards;
+}
+
+.gap-chart.cr-active [style*="#E8590D" i] {
+  animation: gap-label 0.8s ease-out 1.8s forwards;
+}
+
+@keyframes gap-wipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes gap-label {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* year slider at the end of the story */
+.ntl { max-width: 1100px; margin: 0 auto; }
+.ntl-year { font-family: serif; font-size: 1.6rem; text-align: center; color: #444; }
+.ntl-map, .ntl-chart { width: 100%; height: auto; display: block; }
+.ntl-chart-panel { margin-top: 1.5rem; }
+.ntl [hidden] { display: none !important; }
+.ntl-range { width: 100%; accent-color: var(--tkm-orange); margin-top: 0.5rem; }
+.ntl-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-family: serif;
+  font-size: 0.85rem;
+  color: #666;
+}
