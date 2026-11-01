@@ -1,6 +1,4 @@
 library(terra)
-library(stringr)
-library(R.utils)
 library(rnaturalearth)
 library(rnaturalearthdata)
 library(dplyr)
@@ -11,28 +9,27 @@ library(ggthemes)
 
 
 viirs_folder <- "VIIRS Data"
+years <- 2014:2021
 
 tkm <- ne_countries(
   country = "Turkmenistan",
   scale = "medium",
   returnclass = "sf"
-) 
+)
 
 tkm <- vect(tkm)
 
-viirs_files <- list.files(
+#only the Turkmenistan year folders; the country folders (AZE, DEU, ...) are for othercountries.R
+viirs_files <- file.path(
   viirs_folder,
-  pattern = "\\.tif$",
-  recursive = TRUE,
-  full.names = TRUE
+  years,
+  sprintf("TKM_VNL_v2_%d_average_masked.tif", years)
 )
 
-#pullviirsrecursive
+#pullviirs
 
-process_viirs <- function(file) {
+process_viirs <- function(file, year) {
   #crop
-  year <- str_extract(file, "20\\d{2}") |>
-    as.integer()
   r <- rast(file)
   tkm_r <- project(tkm, crs(r))
   r_tkm <- crop(r, tkm_r)
@@ -43,37 +40,34 @@ process_viirs <- function(file) {
     fun = "sum",
     na.rm = TRUE
   )[[1]]
-  
+
   data.frame(
     year = year,
     lights = light_sum
   )
 }
 
-lights_data <- lapply(
+lights_data <- Map(
+  process_viirs,
   viirs_files,
-  process_viirs
+  years
   ) |>
   bind_rows() |>
   arrange(year)
-
-print(lights_data) #remove later
 
 #pullwbgdp
 
 gdp_data <- wb_data(
   indicator = c(real_gdp ="NY.GDP.MKTP.KD"), #real GDP adj for inflation
   country = "TKM",
-  start_date = 2014,
-  end_date = 2021,
+  start_date = min(years),
+  end_date = max(years)
 ) |>
   transmute(
     year = as.integer(date),
     real_gdp
   ) |>
 arrange(year)
-  
-print(gdp_data) #removelater
 
 #combine
 
@@ -83,10 +77,7 @@ turkmen_data <- left_join(
   by = "year"
 )
 
-#
-
-print(turkmen_data) #removelater
-
+# GDP-lights elasticity: Chiovelli, Michalopoulos, Papaioannou & Regan (2025), GWU CER WP 2025-009
 elasticity <- 0.15
 
 # baseline growth not captured by lights (stands in for the GWU constant + population term)
@@ -96,12 +87,40 @@ alpha <- prod(1 + imf_growth / 100)^(1 / length(imf_growth)) - 1 # compound annu
 
 turkmen_data <- turkmen_data |>
   mutate(
-    gdp_index = real_gdp / real_gdp[year == 2014] * 100,
-    lights_index = lights / lights[year == 2014] * 100,
-    lights_implied_gdp_index = 100 * (lights / lights[year == 2014])^elasticity,
-    lights_implied_alpha_index = lights_implied_gdp_index * (1 + alpha)^(year - 2014)
+    gdp_index = real_gdp / real_gdp[year == min(years)] * 100,
+    lights_index = lights / lights[year == min(years)] * 100,
+    lights_implied_gdp_index = 100 * (lights / lights[year == min(years)])^elasticity,
+    lights_implied_alpha_index = lights_implied_gdp_index * (1 + alpha)^(year - min(years)),
+    gap = gdp_index - lights_implied_gdp_index #index points official GDP is above the lights
   )
-  
+
+print(turkmen_data)
+
+#headline numbers (the story's "53% vs -3%, gap of 56 points, ~6.7 pp a year")
+
+last_year <- filter(turkmen_data, year == max(years))
+n_years <- max(years) - min(years)
+
+headline <- data.frame(
+  official_growth = last_year$gdp_index - 100,
+  lights_implied_growth = last_year$lights_implied_gdp_index - 100,
+  gap_points = last_year$gap,
+  #annual overstatement: official yearly growth rate minus the lights-implied one
+  gap_per_year = 100 * ((last_year$gdp_index / 100)^(1 / n_years) -
+                          (last_year$lights_implied_gdp_index / 100)^(1 / n_years))
+)
+
+print(round(headline, 1))
+
+#elasticity sensitivity: light fell, so any positive beta gives a shrinking economy
+
+lights_ratio <- last_year$lights_index / 100
+
+beta_check <- data.frame(beta = c(0.04, 0.15, 0.26, 0.40, 1)) |>
+  mutate(lights_implied_growth = 100 * (lights_ratio^beta - 1))
+
+print(round(beta_check, 2))
+
 # plotthedata
 
 plot_data <- turkmen_data |>
@@ -129,12 +148,10 @@ turkplot <- ggplot(
   labs(
     title = "Turkmenistan: Official GDP vs Nighttime Implied GDP",
     x = NULL,
-    y = "GDP",
+    y = sprintf("GDP (index, %d = 100)", min(years)),
     linetype = NULL,
     caption = "Sources: World Bank WDI; VIIRS VNL v2; elasticity 0.15 from Chiovelli et al. (2025)"
   ) +
   theme_tufte(base_size = 11, base_family = "serif", ticks=TRUE)
 
 print(turkplot)
-
-

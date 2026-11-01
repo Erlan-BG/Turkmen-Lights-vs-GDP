@@ -1,6 +1,8 @@
 # Turkmen-Lights-vs-GDP 🇹🇲
 
-**[Look at it here →](https://01a18ead-54e7-4ce7-5fe2-ab2996fef91f.share.connect.posit.cloud/)**
+**Look at it here → <https://01a18ead-54e7-4ce7-5fe2-ab2996fef91f.share.connect.posit.cloud/>**
+
+[![Official GDP vs lights-implied GDP for Turkmenistan, 2014–2021: official GDP climbs to 153 while lights-implied GDP stays near 100, a peak gap of 56 points](preview.png)](https://01a18ead-54e7-4ce7-5fe2-ab2996fef91f.share.connect.posit.cloud/)
 
 Turkmenistan reports steady growth of about 6% a year, every year. This scrollytelling piece checks that claim against satellite images of the country's lights at night. Using VIIRS nighttime-lights data for 2014–2021 and a published light-to-GDP elasticity, official GDP grows by about 53% while the lights suggest the economy shrank by about 3%, a gap of 56 points. An independent IMF reconstruction of Turkmenistan's GDP also finds a roughly flat economy, and among five comparison countries, Turkmenistan is the only one whose lights fell. Built in R and Quarto with Closeread, and published on Posit Connect Cloud.
 
